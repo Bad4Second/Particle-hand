@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Particle Hand Gesture Controller - Flower Edition</title>
+    <title>3D Particle Hand Gesture Controller - Fixed Edition</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -146,7 +146,7 @@
 
     <div id="loading">
         <div class="spinner"></div>
-        <p style="font-size: 0.85rem; color: #aaa;">Mengunduh Arsitektur AI...</p>
+        <p id="loading-text" style="font-size: 0.85rem; color: #aaa; padding: 0 20px; text-align: center;">Mengunduh Arsitektur AI...</p>
     </div>
 
     <div class="control-panel">
@@ -157,7 +157,7 @@
         
         <div class="mini-popup">
             <div class="title">Status Sistem</div>
-            <div id="mode-label" class="mode-text">Membuka Kamera...</div>
+            <div id="mode-label" class="mode-text">Menginisialisasi...</div>
         </div>
     </div>
 
@@ -169,7 +169,7 @@
 
         const NUM_PARTICLES = 1500;
         const NUM_SPHERE = 700;
-        const NUM_STEMS = 400; // Jumlah partikel khusus batang bunga
+        const NUM_STEMS = 400; 
 
         let currentMode = 1;
         let targetMode = 1;
@@ -178,7 +178,6 @@
         let handPos = { x: 0, y: 0, z: -12 };
         let targetHandPos = { x: 0, y: 0, z: -12 };
 
-        // Buffer stabilisator agar perpindahan gestur tidak melompat acak (Flicker Lock)
         let gestureHistory = [];
         const BUFFER_SIZE = 6;
 
@@ -190,27 +189,16 @@
             5: "BUKET BUNGA (Tangan Terbuka)"
         };
 
-        const positions = { 
-            1: new Float32Array(NUM_PARTICLES * 3), 
-            2: new Float32Array(NUM_PARTICLES * 3), 
-            3: new Float32Array(NUM_PARTICLES * 3), 
-            4: new Float32Array(NUM_PARTICLES * 3),
-            5: new Float32Array(NUM_PARTICLES * 3) // Alokasi Bentuk Bunga baru
-        };
+        const positions = { 1: new Float32Array(NUM_PARTICLES * 3), 2: new Float32Array(NUM_PARTICLES * 3), 3: new Float32Array(NUM_PARTICLES * 3), 4: new Float32Array(NUM_PARTICLES * 3), 5: new Float32Array(NUM_PARTICLES * 3) };
         const currentPositions = new Float32Array(NUM_PARTICLES * 3);
         const particleColors = new Float32Array(NUM_PARTICLES * 3);
 
-        // ==========================================
-        // GENERASI DATA KOORDINAT BENTUK 3D
-        // ==========================================
-        
-        // Mode 1: Kosmos Angkasa (Default Standby)
+        // --- MATRIKS GENERATOR BENTUK 3D ---
         const spreadLimit = isMobile ? 3.0 : 4.5;
         for(let i=0; i < NUM_PARTICLES * 3; i++) {
             positions[1][i] = (Math.random() - 0.5) * (spreadLimit * 2);
         }
 
-        // Mode 2: Saturnus 3D
         for(let i=0; i < NUM_PARTICLES; i++) {
             let i3 = i * 3;
             if (i < NUM_SPHERE) {
@@ -230,12 +218,10 @@
             }
         }
 
-        // Mode 3: Teks Tulisan "I LOVE YOU" (Anti-potong Layar HP)
         const textCanvas = document.createElement('canvas');
         const tCtx = textCanvas.getContext('2d');
         textCanvas.width = 600;
         textCanvas.height = 150;
-        tCtx.style.letterSpacing = "2px";
         tCtx.fillStyle = '#000';
         tCtx.fillRect(0, 0, 600, 150);
         tCtx.fillStyle = '#fff';
@@ -251,11 +237,7 @@
                 let idx = (y * 600 + x) * 4;
                 if (imgData[idx] > 120) {
                     let divisor = isMobile ? 52.0 : 58.0; 
-                    textPoints.push({
-                        x: (x - 300) / divisor,
-                        y: -(y - 75) / divisor,
-                        z: (Math.random() - 0.5) * 0.15
-                    });
+                    textPoints.push({ x: (x - 300) / divisor, y: -(y - 75) / divisor, z: (Math.random() - 0.5) * 0.15 });
                 }
             }
         }
@@ -267,58 +249,42 @@
             positions[3][i3+2] = pt.z;
         }
 
-        // Mode 4: Pola Hati / Love 3D
         for(let i=0; i < NUM_PARTICLES; i++) {
             let i3 = i * 3;
             let t = (Math.random() * Math.PI * 2) - Math.PI;
             let p = (Math.random() * Math.PI * 2) - Math.PI;
-            
             let x = 2.0 * Math.pow(Math.sin(t), 3);
             let y = 2.0 * Math.cos(t) - 0.7 * Math.cos(2*t) - 0.3 * Math.cos(3*t) - 0.1 * Math.cos(4*t);
             let z = Math.sin(p) * 0.4;
-
             positions[4][i3]   = x * 0.85 * scaleFactor;
             positions[4][i3+1] = ((y * 0.85) + 0.5) * scaleFactor;
             positions[4][i3+2] = z * scaleFactor;
         }
 
-        // Mode 5: FORMULASI STRUKTUR BUKET BUNGA BARU
         for(let i=0; i < NUM_PARTICLES; i++) {
             let i3 = i * 3;
             if (i < NUM_STEMS) {
-                // Membuat struktur batang (Mengerucut di tengah ikat pita, melebar ke bawah dan atas)
-                let h = (Math.random() * 3.0 - 1.5); // Tinggi batang dari -1.5 ke 1.5
+                let h = (Math.random() * 3.0 - 1.5); 
                 let angle = (i % 8) * (Math.PI / 4) + (Math.random() * 0.1);
-                // Radius menyusut di area tengah (h dekat -0.3) tempat simpul pita berada
                 let r = (Math.abs(h + 0.3) * 0.28 + 0.05) * (0.8 + Math.random() * 0.4);
-                
                 positions[5][i3]   = r * Math.cos(angle) * scaleFactor;
-                positions[5][i3+1] = (h - 0.5) * scaleFactor; // Menggeser posisi batang agak ke bawah poros
+                positions[5][i3+1] = (h - 0.5) * scaleFactor; 
                 positions[5][i3+2] = r * Math.sin(angle) * scaleFactor;
             } else {
-                // Membuat struktur Kelopak / Mahkota Bunga di bagian atas buket
                 let theta = Math.random() * Math.PI * 2;
-                let phi = Math.random() * (Math.PI / 2); // Setengah bola bagian atas saja
-                let r = (1.0 + Math.random() * 1.2) * scaleFactor; // Radius sebaran bunga
-                
-                // Distribusi bentuk menyerupai kubah payung buket bunga alami
+                let phi = Math.random() * (Math.PI / 2); 
+                let r = (1.0 + Math.random() * 1.2) * scaleFactor; 
                 positions[5][i3]   = r * Math.sin(phi) * Math.cos(theta);
                 positions[5][i3+1] = (r * Math.cos(phi) * 0.7 + 0.8) * scaleFactor; 
                 positions[5][i3+2] = r * Math.sin(phi) * Math.sin(theta);
             }
         }
 
-        // Inisialisasi awal koordinat sistem
-        for(let i=0; i<NUM_PARTICLES*3; i++) {
-            currentPositions[i] = positions[1][i];
-        }
+        for(let i=0; i<NUM_PARTICLES*3; i++) { currentPositions[i] = positions[1][i]; }
 
-        // ==========================================
-        // GRAPHICS INITIALIZATION (THREE.JS ENGINE)
-        // ==========================================
+        // --- UNISIALISASI ENGINE THREE.JS ---
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
-        
         const camera = new THREE.PerspectiveCamera(isMobile ? 55 : 45, window.innerWidth / window.innerHeight, 0.1, 50);
         camera.position.z = 0; 
 
@@ -332,91 +298,62 @@
         geometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
 
         const pTexture = new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/disc.png');
-
         const material = new THREE.PointsMaterial({
-            size: isMobile ? 0.15 : 0.18, 
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.9,
-            map: pTexture,
-            alphaTest: 0.02,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
+            size: isMobile ? 0.15 : 0.18, vertexColors: true, transparent: true, opacity: 0.9, map: pTexture, alphaTest: 0.02, blending: THREE.AdditiveBlending, depthWrite: false
         });
-
         const particleSystem = new THREE.Points(geometry, material);
         scene.add(particleSystem);
 
-        // Manajemen Pewarnaan Spesifik Berdasarkan Mode Aktif
         function updateParticleColors(mode) {
             const colorsAttr = geometry.attributes.color;
             for(let i=0; i<NUM_PARTICLES; i++) {
                 let i3 = i * 3;
                 if(mode === 5) {
-                    // Sistem Warna Khusus Buket Bunga
                     if(i < NUM_STEMS) {
-                        // Batang Bunga berwarna Hijau Daun Alami
                         particleColors[i3] = 0.15; particleColors[i3+1] = 0.55; particleColors[i3+2] = 0.2;
                     } else {
-                        // Kombinasi Warna Bunga: Pink, Kuning Cerah, dan Biru seperti sketsa gambar
                         let cluster = i % 3;
-                        if(cluster === 0) { // Pink Bunga
-                            particleColors[i3] = 1.0; particleColors[i3+1] = 0.45; particleColors[i3+2] = 0.65;
-                        } else if(cluster === 1) { // Kuning Inti
-                            particleColors[i3] = 1.0; particleColors[i3+1] = 0.85; particleColors[i3+2] = 0.0;
-                        } else { // Biru Cerah
-                            particleColors[i3] = 0.0; particleColors[i3+1] = 0.55; particleColors[i3+2] = 1.0;
-                        }
+                        if(cluster === 0) { particleColors[i3] = 1.0; particleColors[i3+1] = 0.45; particleColors[i3+2] = 0.65; } 
+                        else if(cluster === 1) { particleColors[i3] = 1.0; particleColors[i3+1] = 0.85; particleColors[i3+2] = 0.0; } 
+                        else { particleColors[i3] = 0.0; particleColors[i3+1] = 0.55; particleColors[i3+2] = 1.0; }
                     }
                 } else if(mode === 3) {
-                    particleColors[i3] = 0.0; particleColors[i3+1] = 0.8; particleColors[i3+2] = 1.0; // Cyan Teks
+                    particleColors[i3] = 0.0; particleColors[i3+1] = 0.8; particleColors[i3+2] = 1.0;
                 } else if(mode === 4) {
-                    particleColors[i3] = 1.0; particleColors[i3+1] = 0.1; particleColors[i3+2] = 0.4; // Pink Hati
+                    particleColors[i3] = 1.0; particleColors[i3+1] = 0.1; particleColors[i3+2] = 0.4;
                 } else if(mode === 2) {
-                    if(i >= NUM_SPHERE) {
-                        particleColors[i3] = 1.0; particleColors[i3+1] = 0.7; particleColors[i3+2] = 0.3; 
-                    } else {
-                        particleColors[i3] = 1.0; particleColors[i3+1] = 0.5; particleColors[i3+2] = 0.0; 
-                    }
+                    if(i >= NUM_SPHERE) { particleColors[i3] = 1.0; particleColors[i3+1] = 0.7; particleColors[i3+2] = 0.3; } 
+                    else { particleColors[i3] = 1.0; particleColors[i3+1] = 0.5; particleColors[i3+2] = 0.0; }
                 } else {
-                    particleColors[i3] = 0.1; particleColors[i3+1] = 0.4; particleColors[i3+2] = 0.85; // Space Blue Default
+                    particleColors[i3] = 0.1; particleColors[i3+1] = 0.4; particleColors[i3+2] = 0.85;
                 }
             }
             colorsAttr.needsUpdate = true;
         }
-
         updateParticleColors(1);
 
-        // ==========================================
-        // ALGORITMA DETEKSI GESTUR & STABILISASI
-        // ==========================================
+        // --- LOGIKA DETEKSI GESTUR ---
         const videoElement = document.getElementById('webcam');
         const handCanvas = document.getElementById('hand-canvas');
         const ctxOverlay = handCanvas.getContext('2d');
         const modeLabel = document.getElementById('mode-label');
+        const loadingText = document.getElementById('loading-text');
 
         function hitungModeGestur(landmarks) {
             const tips = [8, 12, 16, 20];
             const pips = [6, 10, 14, 18];
             let jariBerdiri = 0;
-
-            for(let i=0; i<4; i++) {
-                if(landmarks[tips[i]].y < landmarks[pips[i]].y) {
-                    jariBerdiri++;
-                }
-            }
-
+            for(let i=0; i<4; i++) { if(landmarks[tips[i]].y < landmarks[pips[i]].y) jariBerdiri++; }
             const indexUp = landmarks[8].y < landmarks[6].y;
             const middleUp = landmarks[12].y < landmarks[10].y;
             const ringUp = landmarks[16].y < landmarks[14].y;
             const pinkyUp = landmarks[20].y < landmarks[18].y;
 
-            if (jariBerdiri === 4) return 5; // 4 Jari Tegak/Tangan Terbuka -> Buket Bunga
-            if (jariBerdiri === 0) return 4; // Tangan Mengepal -> Bentuk Hati
-            if (indexUp && !middleUp && !ringUp && !pinkyUp) return 2; // Hanya Telunjuk -> Saturnus
-            if (indexUp && middleUp && !ringUp && !pinkyUp) return 3; // Dua Jari (Peace) -> Teks I LOVE YOU
-            
-            return 1; // Default fallback internal
+            if (jariBerdiri === 4) return 5; 
+            if (jariBerdiri === 0) return 4; 
+            if (indexUp && !middleUp && !ringUp && !pinkyUp) return 2; 
+            if (indexUp && middleUp && !ringUp && !pinkyUp) return 3; 
+            return 1; 
         }
 
         const hands = new Hands({
@@ -426,50 +363,45 @@
         hands.setOptions({
             maxNumHands: 1,
             modelComplexity: isMobile ? 0 : 1,
-            minDetectionConfidence: 0.7, // Dinaikkan untuk menghindari deteksi palsu benda mati
-            minTrackingConfidence: 0.7
+            minDetectionConfidence: 0.65,
+            minTrackingConfidence: 0.65
         });
 
+        // Trigger penghilangan loading screen dipindah ke sini (saat Three.js & Engine siap render frame awal)
+        function hilangkanLoading() {
+            const loader = document.getElementById('loading');
+            if(loader) {
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 400);
+            }
+        }
+
         hands.onResults((results) => {
-            document.getElementById('loading').style.opacity = '0';
-            setTimeout(() => document.getElementById('loading').style.display = 'none', 400);
+            // Jika AI berhasil memproses frame, hilangkan loading screen
+            hilangkanLoading();
 
             ctxOverlay.clearRect(0, 0, handCanvas.width, handCanvas.height);
 
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 const landmarks = results.multiHandLandmarks[0];
-                
-                // Hitung gestur mentah
                 let rawMode = hitungModeGestur(landmarks);
 
-                // Masukkan ke sistem Buffer Antrian (Voting system untuk mengunci kestabilan gestur)
                 gestureHistory.push(rawMode);
-                if (gestureHistory.length > BUFFER_SIZE) {
-                    gestureHistory.shift();
-                }
+                if (gestureHistory.length > BUFFER_SIZE) gestureHistory.shift();
 
-                let counts = {};
-                let dominantMode = rawMode;
-                let maxCount = 0;
+                let counts = {}; let dominantMode = rawMode; let maxCount = 0;
                 for (let i = 0; i < gestureHistory.length; i++) {
-                    let num = gestureHistory[i];
-                    counts[num] = (counts[num] || 0) + 1;
-                    if (counts[num] > maxCount) {
-                        maxCount = counts[num];
-                        dominantMode = num;
-                    }
+                    let num = gestureHistory[i]; counts[num] = (counts[num] || 0) + 1;
+                    if (counts[num] > maxCount) { maxCount = counts[num]; dominantMode = num; }
                 }
-
                 targetMode = dominantMode;
 
-                // Gambar Garis Tracker Rangka Tangan ke Kotak Kamera
                 drawConnectors(ctxOverlay, landmarks, HAND_CONNECTIONS, {color: '#00e5ff', lineWidth: 3});
                 drawLandmarks(ctxOverlay, landmarks, {color: '#ffffff', lineWidth: 1, radius: 2.5});
 
                 const wrist = landmarks[0];
                 const boundsX = isMobile ? 7.0 : 12.0;
                 const boundsY = isMobile ? 5.0 : 8.0;
-                
                 targetHandPos.x = (wrist.x - 0.5) * boundsX;
                 targetHandPos.y = -(wrist.y - 0.5) * boundsY;
 
@@ -478,7 +410,7 @@
                 const baseDepth = isMobile ? -9.0 : -11.0;
                 targetHandPos.z = baseDepth - (1.0 / (distance + 0.01)) * 0.15;
             } else {
-                // KONDISI RESPONS KETIKKAN TANGAN HILANG -> AUTOMATIS RESET BALIK KE KOSMOS (MODE 1)
+                // SANGAT PENTING: Jika tidak ada tangan, pastikan targetMode kembali ke 1 (KOSMOS)
                 gestureHistory = [];
                 targetMode = 1;
                 targetHandPos.x = 0;
@@ -493,22 +425,48 @@
             }
         });
 
-        const cameraUtils = new Camera(videoElement, {
-            onFrame: async () => {
-                if (handCanvas.width !== videoElement.videoWidth) {
-                    handCanvas.width = videoElement.videoWidth;
-                    handCanvas.height = videoElement.videoHeight;
-                }
-                await hands.send({ image: videoElement });
-            },
-            width: isMobile ? 320 : 480,
-            height: isMobile ? 240 : 360
-        });
-        cameraUtils.start();
+        // --- SISTEM INISIALISASI KAMERA PERBAIKAN (SAFE ASYNC ENGINE) ---
+        async function initCamera() {
+            try {
+                loadingText.innerText = "Meminta Akses Kamera Device...";
+                
+                // Paksa browser memicu prompt izin kamera
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: isMobile ? 320 : 480, height: isMobile ? 240 : 360, facingMode: "user" },
+                    audio: false
+                });
+                videoElement.srcObject = stream;
 
-        // ==========================================
-        // INTERPOLASI ANIMASI UTAMA
-        // ==========================================
+                loadingText.innerText = "Menghubungkan Model AI ke Kamera...";
+                
+                const cameraUtils = new Camera(videoElement, {
+                    onFrame: async () => {
+                        if (handCanvas.width !== videoElement.videoWidth) {
+                            handCanvas.width = videoElement.videoWidth;
+                            handCanvas.height = videoElement.videoHeight;
+                        }
+                        await hands.send({ image: videoElement });
+                    }
+                });
+                
+                await cameraUtils.start();
+                modeLabel.innerText = modeLabels[1];
+                
+                // Tambahkan waktu tunggu toleransi jika di beberapa perangkat HP pemrosesan pertamanya lambat
+                setTimeout(hilangkanLoading, 2500);
+
+            } catch (err) {
+                console.error("Gagal membuka kamera:", err);
+                loadingText.innerHTML = `<span style="color: #ff3b30; font-weight: bold;">Gagal Akses Kamera!</span><br><br>Pastikan Anda memberikan izin kamera pada peramban dan menggunakan koneksi HTTPS.`;
+            }
+        }
+
+        // Jalankan inisialisasi kamera setelah seluruh DOM Three.js siap
+        window.addEventListener('DOMContentLoaded', () => {
+            initCamera();
+        });
+
+        // --- ENGINE RENDER ANIMASI LOOP ---
         function animate() {
             requestAnimationFrame(animate);
 
@@ -516,22 +474,17 @@
             handPos.y += (targetHandPos.y - handPos.y) * 0.12;
             handPos.z += (targetHandPos.z - handPos.z) * 0.12;
 
-            // Kontrol Perputaran Rotasi Otomatis Objek
             if (currentMode === 1) rotationAngle += 0.005;
             else if (currentMode === 2) rotationAngle += 0.025;
-            else if (currentMode === 3) rotationAngle = 0; // Mengunci sumbu teks menghadap depan layar
+            else if (currentMode === 3) rotationAngle = 0; 
             else if (currentMode === 4) rotationAngle += 0.015;
-            else if (currentMode === 5) rotationAngle += 0.012; // Rotasi pelan untuk memamerkan sudut 3D Buket Bunga
+            else if (currentMode === 5) rotationAngle += 0.012;
 
             particleSystem.rotation.y = rotationAngle;
 
             if (currentMode !== 1) {
                 particleSystem.position.set(handPos.x, handPos.y, handPos.z);
-                if(currentMode === 2) {
-                    particleSystem.rotation.x = 0.35; 
-                } else {
-                    particleSystem.rotation.x = 0;
-                }
+                particleSystem.rotation.x = (currentMode === 2) ? 0.35 : 0;
             } else {
                 particleSystem.position.set(0, 0, isMobile ? -10 : -12);
                 particleSystem.rotation.x = 0;
@@ -547,7 +500,6 @@
 
             renderer.render(scene, camera);
         }
-
         animate();
 
         window.addEventListener('resize', () => {
