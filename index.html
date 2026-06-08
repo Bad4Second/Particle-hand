@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Particle Hand Gesture & CSS Flower Bouquet</title>
+    <title>3D Particle Hand Gesture & Fullscreen CSS Flower Bouquet</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -129,7 +129,7 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ========================================================
-           CSS STYLING UNTUK BUNGANYA
+           CSS STYLING UNTUK BUNGANYA (FULLSCREEN / TETAP DI TENGAH)
            ======================================================== */
         .flowers-container-bridge {
             position: absolute;
@@ -146,16 +146,20 @@
 
         .flowers {
             position: absolute;
+            left: 50%;
+            top: 50%;
             transform-origin: bottom center;
             opacity: 0;
+            /* Kembali ke animasi scaling bawaan dari tengah layar */
             transform: translate(-50%, -20%) scale(0);
-            transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease;
+            transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
             width: 0;
             height: 0;
         }
 
         .flowers.active {
             opacity: 1;
+            transform: translate(-50%, -20%) scale(1);
         }
 
         .flower { position: absolute; bottom: 10vmin; transform-origin: bottom center; z-index: 10; --fl-speed: 0.8s; }
@@ -215,7 +219,7 @@
         .flower__line__leaf--1 { top: 25%; left: 80%; border-top-right-radius: var(--h); border-bottom-left-radius: var(--h); transform: rotate(50deg) rotateY(30deg); animation: blooming-leaf-right var(--fl-speed) 1.6s backwards; }
         .flower__line__leaf--2 { top: 45%; left: 80%; border-top-right-radius: var(--h); border-bottom-left-radius: var(--h); transform: rotate(50deg) rotateY(30deg); animation: blooming-leaf-right var(--fl-speed) 1.8s backwards; }
         .flower__line__leaf--3 { top: 15%; left: -380%; border-top-left-radius: var(--h); border-bottom-right-radius: var(--h); transform: rotate(-50deg) rotateY(30deg); animation: blooming-leaf-left var(--fl-speed) 1.2s backwards; }
-        .flower__line__leaf--4 { top: 35%; left: -380%; border-top-left-radius: var(--h); border-bottom-right-radius: var(--h); transform: rotate(-50deg) rotateY(30deg); animation: blooming-leaf-left var(--fl-speed) 1.4s backwards; }
+        .flower__line__leaf--4 { top: 35%; left: -380%; border-top-left-radius: var(--h); border-bottom-right-radius: var(--h); transform: rotate(-50deg) rotateY(30deg) animation: blooming-leaf-left var(--fl-speed) 1.4s backwards; }
         .flower__line__leaf--5 { top: 5%; left: 70%; border-top-right-radius: var(--h); border-bottom-left-radius: var(--h); transform: rotate(60deg) rotateY(30deg) scale(0.7); animation: blooming-leaf-right var(--fl-speed) 1.5s backwards; }
         .flower__line__leaf--6 { top: 0%; left: -350%; border-top-left-radius: var(--h); border-bottom-right-radius: var(--h); transform: rotate(-60deg) rotateY(30deg) scale(0.7); animation: blooming-leaf-left var(--fl-speed) 1.3s backwards; }
 
@@ -454,9 +458,6 @@
         let targetMode = 1;
         let rotationAngle = 0;
 
-        let cssPos = { x: window.innerWidth / 2, y: window.innerHeight / 2, currentScale: 0 };
-        let targetCssPos = { x: window.innerWidth / 2, y: window.innerHeight / 2, scale: 0 };
-
         let handPos = { x: 0, y: 0, z: -12 };
         let targetHandPos = { x: 0, y: 0, z: -12 };
 
@@ -640,15 +641,11 @@
                 const distance = Math.sqrt(Math.pow(wrist.x - pinkyMcp.x, 2) + Math.pow(wrist.y - pinkyMcp.y, 2));
                 const baseDepth = isMobile ? -9.0 : -11.0;
                 targetHandPos.z = baseDepth - (1.0 / (distance + 0.01)) * 0.15;
-
-                targetCssPos.x = (1.0 - wrist.x) * window.innerWidth; 
-                targetCssPos.y = wrist.y * window.innerHeight + (window.innerHeight * 0.08); 
                 
+                // --- KONTROL DETEKSI AKTIF BUNGA ---
                 if (targetMode === 5) {
-                    targetCssPos.scale = isMobile ? (distance * 2.2) : (distance * 2.6);
                     cssBouquet.classList.add('active');
                 } else {
-                    targetCssPos.scale = 0;
                     cssBouquet.classList.remove('active');
                 }
 
@@ -656,8 +653,6 @@
                 gestureHistory = [];
                 targetMode = 1;
                 targetHandPos.x = 0; targetHandPos.y = 0; targetHandPos.z = isMobile ? -10 : -12;
-                
-                targetCssPos.scale = 0;
                 cssBouquet.classList.remove('active');
             }
 
@@ -704,19 +699,11 @@
             handPos.y += (targetHandPos.y - handPos.y) * 0.12;
             handPos.z += (targetHandPos.z - handPos.z) * 0.12;
 
-            cssPos.x += (targetCssPos.x - cssPos.x) * 0.14;
-            cssPos.y += (targetCssPos.y - cssPos.y) * 0.14;
-            cssPos.currentScale += (targetCssPos.scale - cssPos.currentScale) * 0.14;
-
-            cssBouquet.style.left = `${cssPos.x}px`;
-            cssBouquet.style.top = `${cssPos.y}px`;
-            cssBouquet.style.transform = `translate(-50%, -85%) scale(${cssPos.currentScale})`;
-
-            // --- PERUBAHAN UTAMA: KONTROL OPACITY MATERIAL PARTIKEL ---
+            // --- PARTIKEL THREE.JS OPACITY CONTROL ---
             if (currentMode === 5) {
-                material.opacity += (0.0 - material.opacity) * 0.2; // Menghilang mulus ke 0
+                material.opacity += (0.0 - material.opacity) * 0.2; 
             } else {
-                material.opacity += (0.85 - material.opacity) * 0.1; // Muncul kembali ke nilai default 0.85
+                material.opacity += (0.85 - material.opacity) * 0.1; 
             }
 
             if (currentMode === 1) rotationAngle += 0.005;
