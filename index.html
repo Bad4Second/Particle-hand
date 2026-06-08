@@ -129,7 +129,7 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ========================================================
-           CSS STYLING UNTUK BUNGANYA (FULLSCREEN / TETAP DI TENGAH)
+           CSS STYLING UNTUK BUNGANYA (POSISI DIBAWAH LAYAR)
            ======================================================== */
         .flowers-container-bridge {
             position: absolute;
@@ -150,8 +150,8 @@
             top: 50%;
             transform-origin: bottom center;
             opacity: 0;
-            /* Kembali ke animasi scaling bawaan dari tengah layar */
-            transform: translate(-50%, -20%) scale(0);
+            /* Mengubah -20% menjadi -5% agar posisi awal pivot ada di area bawah */
+            transform: translate(-50%, -5%) scale(0);
             transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
             width: 0;
             height: 0;
@@ -159,7 +159,8 @@
 
         .flowers.active {
             opacity: 1;
-            transform: translate(-50%, -20%) scale(1);
+            /* Mengubah -20% menjadi -5% agar saat mekar posisinya tetap kokoh di bawah layar */
+            transform: translate(-50%, -5%) scale(1);
         }
 
         .flower { position: absolute; bottom: 10vmin; transform-origin: bottom center; z-index: 10; --fl-speed: 0.8s; }
@@ -219,7 +220,7 @@
         .flower__line__leaf--1 { top: 25%; left: 80%; border-top-right-radius: var(--h); border-bottom-left-radius: var(--h); transform: rotate(50deg) rotateY(30deg); animation: blooming-leaf-right var(--fl-speed) 1.6s backwards; }
         .flower__line__leaf--2 { top: 45%; left: 80%; border-top-right-radius: var(--h); border-bottom-left-radius: var(--h); transform: rotate(50deg) rotateY(30deg); animation: blooming-leaf-right var(--fl-speed) 1.8s backwards; }
         .flower__line__leaf--3 { top: 15%; left: -380%; border-top-left-radius: var(--h); border-bottom-right-radius: var(--h); transform: rotate(-50deg) rotateY(30deg); animation: blooming-leaf-left var(--fl-speed) 1.2s backwards; }
-        .flower__line__leaf--4 { top: 35%; left: -380%; border-top-left-radius: var(--h); border-bottom-right-radius: var(--h); transform: rotate(-50deg) rotateY(30deg) animation: blooming-leaf-left var(--fl-speed) 1.4s backwards; }
+        .flower__line__leaf--4 { top: 35%; left: -380%; border-top-left-radius: var(--h); border-bottom-right-radius: var(--h); transform: rotate(-50deg) rotateY(30deg); animation: blooming-leaf-left var(--fl-speed) 1.4s backwards; }
         .flower__line__leaf--5 { top: 5%; left: 70%; border-top-right-radius: var(--h); border-bottom-left-radius: var(--h); transform: rotate(60deg) rotateY(30deg) scale(0.7); animation: blooming-leaf-right var(--fl-speed) 1.5s backwards; }
         .flower__line__leaf--6 { top: 0%; left: -350%; border-top-left-radius: var(--h); border-bottom-right-radius: var(--h); transform: rotate(-60deg) rotateY(30deg) scale(0.7); animation: blooming-leaf-left var(--fl-speed) 1.3s backwards; }
 
@@ -642,7 +643,6 @@
                 const baseDepth = isMobile ? -9.0 : -11.0;
                 targetHandPos.z = baseDepth - (1.0 / (distance + 0.01)) * 0.15;
                 
-                // --- KONTROL DETEKSI AKTIF BUNGA ---
                 if (targetMode === 5) {
                     cssBouquet.classList.add('active');
                 } else {
@@ -699,7 +699,6 @@
             handPos.y += (targetHandPos.y - handPos.y) * 0.12;
             handPos.z += (targetHandPos.z - handPos.z) * 0.12;
 
-            // --- PARTIKEL THREE.JS OPACITY CONTROL ---
             if (currentMode === 5) {
                 material.opacity += (0.0 - material.opacity) * 0.2; 
             } else {
